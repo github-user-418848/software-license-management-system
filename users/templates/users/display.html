@@ -1,0 +1,245 @@
+{% extends 'base.html' %}
+{% load bootstrap_filters %}
+
+{% block title %} Users {% endblock %}
+
+{% block style %}
+<style>
+    .advanced-search-form {
+        padding: 30px;
+        max-width: 500px;
+        width: 500px;
+    }
+    .table tr {
+        vertical-align: middle;
+    }
+    #message {
+        max-width: 1000px;
+        width: 100%;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-3">
+    <div class="col-lg-12 col-10 align-self-start">
+        <h1 class="display-5">Users</h1>
+        <p class="text-secondary">Manage an account of a user, edit details or deactivate the account.</p>
+    </div>
+    <div class="col-lg-12 ">
+        <form method="GET" class="d-flex gap-1">
+            {% csrf_token %}
+            <div class="input-group">
+                {% if users %}
+                    <a href="#" class="btn btn-outline-warning col-2">Deactivate</a>
+                {% endif %}
+                {{ search_form.keyword |add_bootstrap_class:"form-control" }}
+                <button type="submit" id="search" name="search" class="btn btn-primary">Search</button>
+            </div>
+            <div class="dropdown col-lg-3">
+                <button id="advanced-search-dropdown" class="btn btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown"
+                    aria-expanded="false">
+                    Advanced
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <div class="advanced-search-form">
+                        <div class="form-group">
+                            <label class="small" for="{{ search_form.roletype.id_for_label }}">Role Type</label>
+                            {{ search_form.role_type |add_bootstrap_class:"form-control" }}
+                        </div>
+                        <div class="form-group">
+                            <label class="small" for="{{ search_form.status.id_for_label }}">Status</label>
+                            {{ search_form.status |add_bootstrap_class:"form-control" }}
+                        </div>
+                        <div class="d-flex justify-content-space-between">
+                            <div class="col-lg-6 form-group">
+                                <label class="small" for="{{ search_form.start_date.id_for_label }}">Start Date</label>
+                                {{ search_form.start_date |add_bootstrap_class:"form-control" }}
+                            </div>
+                            <div class="col-lg-6 form-group">
+                                <label class="small" for="{{ search_form.end_date.id_for_label }}">End Date</label>
+                                {{ search_form.end_date |add_bootstrap_class:"form-control" }}
+                            </div>
+                        </div>
+                        <div class="form-group mt-3 d-flex gap-1 justify-content-end">
+                            <a id="cancel-advanced-search" class="btn">Cancel</a>
+                            <a id="advanced-search" class="btn btn-primary">Apply</a>
+                        </div>
+                    </div>
+                </ul>
+            </div>
+            <div class="col-3 d-flex justify-content-end gap-1">
+                <a href="{% url 'register.users' %}" class="btn col-lg-6 btn-primary">Register</a>
+                <button type="submit" name="search" class="btn col-lg-6 btn-primary">Export</button>
+            </div>
+        </form>
+    </div>
+</div>
+<div class="row">
+    <div class="col-12 mx-auto">
+        <div class="card p-3 h-100 table-responsive text-nowrap" style="min-height: 70vh">
+            <table class="table table-lg">
+                {% if users %}
+                <thead>
+                    <tr>
+                        <th scope="col">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" value="" id="defaultCheck1">
+                            </div>
+                        </th>
+                        <th scope="col">Image</th>
+                        <th scope="col">First Name</th>
+                        <th scope="col">Last Name</th>
+                        <th scope="col">E-mail</th>
+                        <th scope="col">Username</th>
+                        <th scope="col">Role Type</th>
+                        <th scope="col">Date Joined</th>
+                        <th scope="col">Status</th>
+                        <th scope="col">Actions</th>
+                    </tr>
+                </thead>
+                {% endif %}
+                <tbody>
+                    {% for user in users %}
+                    <tr>
+                        <td>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" value="" id="defaultCheck1">
+                            </div>
+                        </td>
+                        <td><img src="{{ user.image.url }}" class="img-fluid rounded-circle" width="40" height="40"></td>
+                        <td>{{ user.first_name }}</td>
+                        <td>{{ user.last_name }}</td>
+                        <td>{{ user.email }}</td>
+                        <td>{{ user.username }}</td>
+                        <td>{{ user.roletype }}</td>
+                        <td>{{ user.date_joined|date:"F d, Y" }}</td>
+                        <td>
+                            {% if user.is_active %}
+                            <span class="badge text-bg-primary">ACTIVE</span>
+                            {% else %}
+                            <span class="badge text-bg-warning">INACTIVE</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="{% url 'update.users' id=user.id token=user.token %}" class="btn">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="currentColor" class="bi bi-pen" viewBox="0 0 16 16">
+                                    <path d="m13.498.795.149-.149a1.207 1.207 0 1 1 1.707 1.708l-.149.148a1.5 1.5 0 0 1-.059 2.059L4.854 14.854a.5.5 0 0 1-.233.131l-4 1a.5.5 0 0 1-.606-.606l1-4a.5.5 0 0 1 .131-.232l9.642-9.642a.5.5 0 0 0-.642.056L6.854 4.854a.5.5 0 1 1-.708-.708L9.44.854A1.5 1.5 0 0 1 11.5.796a1.5 1.5 0 0 1 1.998-.001zm-.644.766a.5.5 0 0 0-.707 0L1.95 11.756l-.764 3.057 3.057-.764L14.44 3.854a.5.5 0 0 0 0-.708l-1.585-1.585z"/>
+                                </svg>
+                            </a>
+                            <button type="button" class="btn" data-bs-toggle="modal" data-bs-target="#backDropDeactivate{{ user.id }}">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="currentColor" class="bi bi-x-circle" viewBox="0 0 16 16">
+                                    <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+                                    <path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"/>
+                                </svg>
+                            </button>
+                            <div class="modal fade" id="backDropDeactivate{{ user.id }}" tabindex="-1" aria-labelledby="backDropDeactivateLabel{{ user.id }}" aria-hidden="true">
+                                <div class="modal-dialog modal-dialog-centered">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h1 class="modal-title fs-5" id="backdropDeactivateLabel{{ user.id }}">Are you sure?</h1>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                        </div>
+                                        <form id="deactivateForm" class="d-inline" action="{% url 'deactivate.users' id=user.id token=user.token %}" method="post">
+                                            {% csrf_token %}
+                                            <div class="modal-body">
+                                                <p class="text-wrap text-center">Type <span class="text-warning">deactivate</span> then submit to continue.</p>
+                                                <input id="deactivate-input" class="form-control" name="deactivate-input">
+                                                <div class="invalid-feedback small">
+                                                    Type 'deactivate' to confirm account deactivation.
+                                                </div>
+                                                <center>
+                                                    <button type="submit" class="mt-3 btn btn-warning mx-auto">Deactivate Account</button>
+                                                </center>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                            <button type="button" class="btn" data-bs-toggle="modal" data-bs-target="#backdropDelete{{ user.id }}">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="currentColor" class="bi bi-trash3" viewBox="0 0 16 16">
+                                    <path d="M6.5 1h3a.5.5 0 0 1 .5.5v1H6v-1a.5.5 0 0 1 .5-.5ZM11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3A1.5 1.5 0 0 0 5 1.5v1H2.506a.58.58 0 0 0-.01 0H1.5a.5.5 0 0 0 0 1h.538l.853 10.66A2 2 0 0 0 4.885 16h6.23a2 2 0 0 0 1.994-1.84l.853-10.66h.538a.5.5 0 0 0 0-1h-.995a.59.59 0 0 0-.01 0H11Zm1.958 1-.846 10.58a1 1 0 0 1-.997.92h-6.23a1 1 0 0 1-.997-.92L3.042 3.5h9.916Zm-7.487 1a.5.5 0 0 1 .528.47l.5 8.5a.5.5 0 0 1-.998.06L5 5.03a.5.5 0 0 1 .47-.53Zm5.058 0a.5.5 0 0 1 .47.53l-.5 8.5a.5.5 0 1 1-.998-.06l.5-8.5a.5.5 0 0 1 .528-.47ZM8 4.5a.5.5 0 0 1 .5.5v8.5a.5.5 0 0 1-1 0V5a.5.5 0 0 1 .5-.5Z"/>
+                                </svg>
+                            </button>
+                            <div class="modal fade" id="backdropDelete{{ user.id }}" tabindex="-1" aria-labelledby="backdropDeactivateLabel{{ user.id }}" aria-hidden="true">
+                                <div class="modal-dialog modal-dialog-centered">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h1 class="modal-title fs-5" id="backdropDeactivateLabel{{ user.id }}">Are you sure?</h1>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                        </div>
+                                        <form id="deleteForm" class="d-inline" action="{% url 'delete.users' id=user.id token=user.token %}" method="post">
+                                            {% csrf_token %}
+                                            <div class="modal-body">
+                                                <p class="text-wrap">This action cannot be undone. Type <span class="text-warning">delete</span> then submit to continue.</p>
+                                                <input id="delete-input" class="form-control" name="delete-input">
+                                                <div class="invalid-feedback small">
+                                                    Type 'delete' to confirm deletion.
+                                                </div>
+                                                <center>
+                                                    <button type="submit" class="mt-3 btn btn-warning mx-auto">Delete Account</button>
+                                                </center>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                        <div class="m-auto text-center">
+                            <p>No users found.</p>
+                            {% if request.GET %}<a href="{% url 'display.users' %}">Clear Filters</a>{% endif %}
+                        </div>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+    <script>
+
+        {% comment %} ADVANCE SEARCH FORM {% endcomment %}
+
+        const searchBtn = document.getElementById('search')
+        const advancedSearchBtn = document.getElementById('advanced-search')
+        const cancelAdvancedSearchBtn = document.getElementById('cancel-advanced-search')
+        const advancedSearchDropdown = document.getElementById('advanced-search-dropdown')
+
+        advancedSearchBtn.addEventListener('click', () => {
+            searchBtn.click();
+        });
+
+        cancelAdvancedSearchBtn.addEventListener('click', () => {
+            advancedSearchDropdown.setAttribute('aria-expanded', 'false');
+        });
+
+        {% comment %} DELETE | DEACTIVATE FORM {% endcomment %}
+
+        function initializeForm(formId, inputId) {
+            const form = document.getElementById(formId);
+            const input = document.getElementById(inputId);
+
+            form.addEventListener('submit', (event) => {
+                const userInput = input.value.trim();
+                const expectedInput = formId === 'deactivateForm' ? 'deactivate' : 'delete';
+
+                if (userInput.toLowerCase() !== expectedInput) {
+                    event.preventDefault();
+                    input.classList.add('is-invalid');
+                }
+            });
+
+            window.addEventListener('load', () => {
+                input.value = '';
+            });
+        }
+
+        initializeForm('deactivateForm', 'deactivate-input');
+        initializeForm('deleteForm', 'delete-input');
+
+    </script>
+{% endblock %}

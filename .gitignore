@@ -1,0 +1,11 @@
+.env
+.vscode
+*.json
+__pycache__/
+migrations/
+staticfiles/
+media/
+node_modules/
+db.sqlite3
+package-lock.json
+package.json

@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+{% load bootstrap_filters %}
+
+{% block title %} {{ user.get_full_name }} {% endblock %}
+
+{% block style %}
+<style>
+    #update {
+        max-width: 800px;
+        width: 100%;
+    }
+    #update .card {
+        padding: 15px;
+    }
+    #update .form-group, #update .g-recaptcha {
+        margin-bottom: 20px;
+    }
+    #update .btn {
+        max-width: 220px;
+        width: 100%;
+        margin: 0 auto;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<h1 class="display-5">User Update</h1>
+<p class="text-secondary">Update user account details</p>
+<div id="update" class="mx-auto">
+    <div class="card">
+        <div class="card-body">
+            <form class="mx-auto" method="POST">
+                {% csrf_token %}
+                <div class="row mx-auto">
+                    <div class="col-md-6">
+                        <div class="form-group d-block">
+                            <label class="small" for="{{ update_form.first_name.id_for_label }}">First Name</label>
+                            {{ update_form.first_name |add_bootstrap_class:"form-control" }}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label class="small" for="{{ update_form.last_name.id_for_label }}">Last Name</label>
+                            {{ update_form.last_name |add_bootstrap_class:"form-control" }}
+                        </div>
+                    </div>
+                    <div class="col-md-12">
+                        <div class="form-group">
+                            <label class="small" for="{{ update_form.email.id_for_label }}">E-mail</label>
+                            {{ update_form.email |add_bootstrap_class:"form-control" }}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label class="small" for="{{ update_form.username.id_for_label }}">Username</label>
+                            {{ update_form.username |add_bootstrap_class:"form-control" }}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label class="small" for="{{ update_form.roletype.id_for_label }}">Role Type</label>
+                            {{ update_form.roletype |add_bootstrap_class:"form-control" }}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group form-check form-switch">
+                            <label for="{{ update_form.is_active.id_for_label }}" role="switch">Is Active</label>
+                            {{ update_form.is_active |add_bootstrap_class:"form-check-input" }}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group form-check form-switch">
+                            <label for="{{ update_form.is_staff.id_for_label }}" role="switch">Is Staff</label>
+                            {{ update_form.is_staff |add_bootstrap_class:"form-check-input" }}
+                        </div>
+                    </div>
+                </div>
+                <input type="submit" class="btn btn-primary d-block" name="submit" value="Update">
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

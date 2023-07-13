@@ -1,0 +1,87 @@
+{% extends 'base.html' %}
+{% load bootstrap_filters %}
+
+{% block title %}
+  Register User
+{% endblock %}
+
+{% block style %}
+  <style>
+    #register {
+      max-width: 800px;
+      width: 100%;
+    }
+    #register .card {
+      padding: 15px;
+    }
+    #register .form-group,
+    #register .g-recaptcha {
+      margin-bottom: 20px;
+    }
+    #register .btn {
+      max-width: 220px;
+      width: 100%;
+      margin: 0 auto;
+    }
+  </style>
+{% endblock %}
+
+{% block content %}
+  <h1 class="display-5">User Registration</h1>
+  <p class="text-secondary">Create a new account for the user</p>
+
+  <div id="register" class="mx-auto">
+    <div class="card">
+      <div class="card-body">
+        <form class="mx-auto" method="POST">
+          {% csrf_token %}
+          <div class="row mx-auto">
+            <div class="col-md-6">
+              <div class="form-group d-block">
+                <label class="small" for="{{ registration_form.first_name.id_for_label }}">First Name</label>
+                {{ registration_form.first_name|add_bootstrap_class:'form-control' }}
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="form-group">
+                <label class="small" for="{{ registration_form.last_name.id_for_label }}">Last Name</label>
+                {{ registration_form.last_name|add_bootstrap_class:'form-control' }}
+              </div>
+            </div>
+            <div class="col-md-12">
+              <div class="form-group">
+                <label class="small" for="{{ registration_form.email.id_for_label }}">E-mail</label>
+                {{ registration_form.email|add_bootstrap_class:'form-control' }}
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="form-group">
+                <label class="small" for="{{ registration_form.username.id_for_label }}">Username</label>
+                {{ registration_form.username|add_bootstrap_class:'form-control' }}
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="form-group">
+                <label class="small" for="{{ registration_form.roletype.id_for_label }}">Role Type</label>
+                {{ registration_form.roletype|add_bootstrap_class:'form-control' }}
+              </div>
+            </div>
+            <div class="col-md-12">
+              <div class="form-group">
+                <label class="small" for="{{ registration_form.password1.id_for_label }}">Password</label>
+                {{ registration_form.password1|add_bootstrap_class:'form-control' }}
+              </div>
+            </div>
+            <div class="col-md-12">
+              <div class="form-group">
+                <label class="small" for="{{ registration_form.password2.id_for_label }}">Confirm Password</label>
+                {{ registration_form.password2|add_bootstrap_class:'form-control' }}
+              </div>
+            </div>
+          </div>
+          <input type="submit" class="btn btn-primary d-block" name="submit" value="Update" />
+        </form>
+      </div>
+    </div>
+  </div>
+{% endblock %}
