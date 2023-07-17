@@ -45,13 +45,13 @@
       const themeToggleBtn = document.querySelectorAll('#theme-toggle');
       let toggle;
 
-      window.addEventListener('load', () => {
+      document.addEventListener('DOMContentLoaded', () => {
         if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
           toggle = true;
-          //retrieveAllThemeToggleBtn();
+          retrieveAllThemeToggleBtn();
         }
       });
-
+      
       themeToggleBtn.forEach((themeToggleBtns) => {
         themeToggleBtns.addEventListener('click', () => {
           toggle = !toggle;
