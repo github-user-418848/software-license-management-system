@@ -1,5 +1,6 @@
 from django import forms
 from django.utils.translation import gettext_lazy as _
+from django.contrib.auth.forms import PasswordChangeForm
 from .models import CustomUser
 import re
 
@@ -59,36 +60,7 @@ class RegistrationForm(forms.ModelForm, CommonCleanMixin):
             raise forms.ValidationError("Passwords don't match")
 
         return cleaned_data
-    
-    # def clean(self):
-    #     cleaned_data = super().clean()
-    #     password1 = cleaned_data.get('password1')
-    #     password2 = cleaned_data.get('password2')
-
-    #     if password2 != password1:
-    #         raise forms.ValidationError("Passwords don't match")
-
-    #     return cleaned_data
-    
-    
-    # def clean_password1(self):
-    #     password1 = self.cleaned_data.get('password1')
-    #     password2 = self.cleaned_data.get('password2')
-
-    #     if password2 != password1:
-    #         raise forms.ValidationError("")
-
-    #     return password1
-
-    # def clean_password2(self):
-    #     password1 = self.cleaned_data.get('password1')
-    #     password2 = self.cleaned_data.get('password2')
-
-    #     if password2 != password1:
-    #         raise forms.ValidationError("Passwords don't match")
-
-    #     return password2
-
+        
     def save(self, commit=True):
         user = super(RegistrationForm, self).save(commit=False)
         user.set_password(self.cleaned_data["password2"])
@@ -147,3 +119,10 @@ class SearchForm(forms.Form):
             raise forms.ValidationError("Start date cannot be later than end date.")
             
         return cleaned_data
+
+class ChangePasswordForm(PasswordChangeForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['old_password'].widget = forms.PasswordInput(attrs={'class': 'form-control', 'placeholder': 'Current Password'})
+        self.fields['new_password1'].widget = forms.PasswordInput(attrs={'class': 'form-control', 'placeholder': 'New Password'})
+        self.fields['new_password2'].widget = forms.PasswordInput(attrs={'class': 'form-control', 'placeholder': 'Confirm New Password'})

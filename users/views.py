@@ -1,13 +1,13 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.db.models import Q
 from django.contrib import messages
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponseForbidden
 from django.conf import settings
 
 from .models import CustomUser
-from .forms import RegistrationForm, UpdateForm, SearchForm, LoginForm
+from .forms import RegistrationForm, UpdateForm, SearchForm, LoginForm, ChangePasswordForm
 from .decorators import check_authentication, is_user_not_owner, user_role_required, recaptcha_required
 
 @login_required
@@ -130,7 +130,25 @@ def login_user(request):
         'login_form': login_form,
         'recaptcha_site_key': settings.RECAPTCHA_PUBLIC_KEY
     }
-    return render(request, 'users/login.html', context)    
+    return render(request, 'users/login.html', context)
+
+@login_required
+def change_password(request, id, token):
+    if request.user.id == id and request.user.token == token:
+        if request.method == 'POST':
+            change_password_form = ChangePasswordForm(request.user, request.POST)
+            if change_password_form.is_valid():
+                user = change_password_form.save()
+                update_session_auth_hash(request, user)  # Important to update the session
+                messages.success(request, 'Your password has been changed successfully', extra_tags="success")
+                return redirect('change_password.users', id=id, token=token)
+        else:
+            change_password_form = ChangePasswordForm(request.user)
+
+        context = {
+            'change_password_form': change_password_form,
+        }
+        return render(request, 'users/change_password.html', context)  
 
 def logout_user(request, id, token):
     if request.user.id == id and request.user.token == token:
