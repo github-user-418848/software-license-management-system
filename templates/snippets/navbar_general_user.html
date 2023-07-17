@@ -78,7 +78,7 @@
                     </a>
                     <ul class="dropdown-menu dropdown-menu-lg-end">
                         <li><a class="dropdown-item" href="#">My Account</a></li>
-                        <li><a class="dropdown-item" href="#">Change Password</a></li>
+                        <li><a class="dropdown-item" href="{% url 'change_password.users' id=request.user.id token=request.user.token %}">Change Password</a></li>
                         <li><a class="dropdown-item" href="{% url 'logout.users' id=request.user.id token=request.user.token %}">Logout</a></li>
                     </ul>
                 </li>
