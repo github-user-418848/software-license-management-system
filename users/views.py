@@ -1,158 +1,113 @@
-from django.shortcuts import render, redirect, get_object_or_404
-from django.db.models import Q
-from django.contrib import messages
+from rest_framework import status
+from rest_framework.views import APIView
+from rest_framework.viewsets import ModelViewSet
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
+from django.shortcuts import get_object_or_404
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
-from django.contrib.auth.decorators import login_required
-from django.http import HttpResponseForbidden
-from django.conf import settings
-
+from .serializers import UserSerializer, SuperUserAdminSerializer, UserRegistrationSerializer
 from .models import CustomUser
-from .forms import RegistrationForm, UpdateForm, SearchForm, LoginForm, ChangePasswordForm
-from .decorators import check_authentication, is_user_not_owner, user_role_required, recaptcha_required
 
-@login_required
-@check_authentication
-@user_role_required(['superadmin', 'admin'])
-def display(request):
-    search_form = SearchForm(request.GET)
-    users = CustomUser.objects.exclude(id=request.user.id)
-    
-    if 'search' in request.GET:
-        if search_form.is_valid():
-            keyword = search_form.cleaned_data.get('keyword')
-            role_type = search_form.cleaned_data.get('role_type')
-            status = search_form.cleaned_data.get('status')
-            start_date = search_form.cleaned_data.get('start_date')
-            end_date = search_form.cleaned_data.get('end_date')
+class UserViewSet(ModelViewSet):
+    queryset = CustomUser.objects.all()
+    serializer_class = UserSerializer
+    permission_classes = [IsAuthenticated]  # Add appropriate permissions as needed
+
+    def get_object(self):
+        queryset = self.filter_queryset(self.get_queryset())
+        token = self.kwargs.get('token')  # Get the token from the URL parameter
+        user = get_object_or_404(queryset, token=token)  # Retrieve the user by token
+        
+        if self.request.user.token != user.token:
+            return Response({'error': 'Access denied'}, status=status.HTTP_403_FORBIDDEN)
+        
+        if self.request.user.roletype not in ['superadmin', 'admin']:
+            self.check_object_permissions(self.request, user)  # Check object-level permissions for non-admin users
+        return user
+
+    def get_serializer_class(self):
+        if self.request.user.roletype == 'superadmin':
+            return SuperUserAdminSerializer  # Serializer for admin users
+        return UserSerializer  # Default serializer for other users
+
+    def update(self, request, *args, **kwargs):
+        if self.request.user.roletype not in ['superadmin', 'admin']:
+            request.data.pop('password', None)
+        
+        return super().update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        if self.request.user.roletype != 'superadmin':
+            return Response(status=status.HTTP_403_FORBIDDEN)
             
-            if keyword:
-                users = users.filter(
-                    Q(first_name__icontains=keyword) |
-                    Q(last_name__icontains=keyword) |
-                    Q(username__icontains=keyword) |
-                    Q(email__icontains=keyword)
-                )
-            if role_type:
-                users = users.filter(roletype=role_type)
-            if status:
-                users = users.filter(is_active=(status == 'active'))
-            if start_date and end_date:
-                users = users.filter(date_joined__range=(start_date, end_date))
-    else:
-        users = CustomUser.objects.exclude(id=request.user.id)[:50]
+        user = self.get_object()
+        self.perform_destroy(user)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
-    context = {
-        'users': users,
-        'search_form': search_form,
-    }
+    def perform_destroy(self, instance):
+        instance.delete()
 
-    return render(request, 'users/display.html', context)
-
-@login_required
-@check_authentication
-@user_role_required(['superadmin', 'admin'])
-@is_user_not_owner
-def update(request, id, token):
-    user = get_object_or_404(CustomUser, id=id, token=token)
-    update_form = UpdateForm(request.POST or None, instance=user)
-    if update_form.is_valid():
-        update_form.save()
-        messages.success(request, 'User account ({}) has been updated successfully'.format(user.email), extra_tags="success")
-        return redirect(('display.users'))
-    
-    context = {
-        'user': user,
-        'update_form': update_form,
-    }
-    
-    return render(request, 'users/update.html', context)
-    
-@login_required
-@check_authentication
-@user_role_required(['superadmin', 'admin'])
-def register(request):
-    if request.method == 'POST':
-        registration_form = RegistrationForm(request.POST or None)
-        if registration_form.is_valid():
-            registration_form.save()
-            messages.info(request, 'User account has been registered successfully', extra_tags="info")
-            return redirect('display.users')
-    else:
-        registration_form = RegistrationForm()
-
-    context = { 'registration_form': registration_form }
-    return render(request, 'users/register.html', context)
-
-@login_required
-@check_authentication
-@user_role_required(['superadmin', 'admin'])
-@is_user_not_owner
-def deactivate(request, id, token):
-    user = get_object_or_404(CustomUser, id=id, token=token)
-    if request.method == 'POST':
+    def deactivate(self, request, *args, **kwargs):
+        if user.id != request.user.id and user.token != request.user.token:
+            return Response({'error: Access Denied'}, status=status.HTTP_403_FORBIDDEN)
+        
+        user = self.get_object()
         user.is_active = False
         user.save()
-        messages.info(request, 'User account ({}) has been deactivated'.format(user.email), extra_tags="info")
-        return redirect('display.users')
-    else:
-        return HttpResponseForbidden("Invalid request")
+        return Response({'message': 'User deactivated successfully'}, status=status.HTTP_200_OK)
     
-@login_required
-@check_authentication
-@user_role_required(['superadmin'])
-@is_user_not_owner
-def delete_user(request, id, token):
-    user = get_object_or_404(CustomUser, id=id, token=token)
-    if request.method == 'POST':
-        user.delete()
-        messages.info(request, 'User account ({}) has been deleted'.format(user.email), extra_tags="info")
-        return redirect('display.users')
-    else:
-        return HttpResponseForbidden("Invalid request")
+    def register(self, request, *args, **kwargs):
+        if self.request.user.roletype not in ['superadmin', 'admin']:
+            return Response(status=status.HTTP_403_FORBIDDEN)
+            
+        serializer = UserRegistrationSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-@recaptcha_required(redirect_url='login.users')
-def login_user(request):
-    if request.method == 'POST':
-        login_form = LoginForm(request.POST)
-        if login_form.is_valid():
-            username = login_form.cleaned_data['username']
-            password = login_form.cleaned_data['password']
-            user = authenticate(request, username=username, password=password)
-            if user is not None:
-                login(request, user)
-                return redirect('display.dashboard')
-            else:
-                login_form.add_error(None, 'Wrong Credentials')
-    else:
-        login_form = LoginForm()
+class LoginView(APIView):
+    def post(self, request):
+        username = request.data.get('username')  # Get the username from the request data
+        password = request.data.get('password')  # Get the password from the request data
+        content = request.data.get('content')  # Get the content field from the request data
+        
+        # Validate the username, password, and content fields
+        if not username or not password or not content:
+            return Response({'error': 'Invalid credentials'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Authenticate the user
+        user = authenticate(request, username=username, password=password)
 
-    context = {
-        'login_form': login_form,
-        'recaptcha_site_key': settings.RECAPTCHA_PUBLIC_KEY
-    }
-    return render(request, 'users/login.html', context)
-
-@login_required
-def change_password(request, id, token):
-    if request.user.id == id and request.user.token == token:
-        if request.method == 'POST':
-            change_password_form = ChangePasswordForm(request.user, request.POST)
-            if change_password_form.is_valid():
-                user = change_password_form.save()
-                update_session_auth_hash(request, user)  # Important to update the session
-                messages.success(request, 'Your password has been changed successfully', extra_tags="success")
-                return redirect('change_password.users', id=id, token=token)
+        if user is not None:
+            login(request, user)
+            serializer = UserSerializer(user)  # Serialize the user object
+            if user.id != request.user.id and user.token != request.user.token:
+                return Response({'error': 'Access denied'}, status=status.HTTP_403_FORBIDDEN)
+            return Response(serializer.data, status=status.HTTP_200_OK)
         else:
-            change_password_form = ChangePasswordForm(request.user)
+            return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
 
-        context = {
-            'change_password_form': change_password_form,
-        }
-        return render(request, 'users/change_password.html', context)  
-
-def logout_user(request, id, token):
-    if request.user.id == id and request.user.token == token:
+class LogoutView(APIView):
+    def post(self, request):
         logout(request)
-        return redirect('login.users')
-    else:
-        return HttpResponseForbidden("Invalid request")
+        return Response(status=status.HTTP_200_OK)
+
+class ChangePasswordView(APIView):
+    permission_classes = [IsAuthenticated]  # Add appropriate permissions as needed
+
+    def post(self, request):
+        user = request.user
+        current_password = request.data.get('current_password')
+        new_password = request.data.get('new_password')
+
+        if user.id != request.user.id and user.token != request.user.token:
+            return Response({'error': 'Access denied'}, status=status.HTTP_403_FORBIDDEN)
+        
+        if not user.check_password(current_password):
+            return Response({'error': 'Incorrect current password'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        user.set_password(new_password)
+        user.save()
+        update_session_auth_hash(request, user)
+
+        return Response({'message': 'Password changed successfully'}, status=status.HTTP_200_OK)

@@ -1,13 +1,16 @@
-from django.urls import path
-from .views import display, login_user, register, change_password, update, deactivate, logout_user, delete_user
+from django.urls import include, path
+from rest_framework.routers import DefaultRouter
+
+from .views import UserViewSet, LoginView, LogoutView, ChangePasswordView
+
+router = DefaultRouter()
+router.register('users', UserViewSet, basename='users')
 
 urlpatterns = [
-    path('', display, name='display.users'),
-    path('login/', login_user, name='login.users'),
-    path('register/', register, name='register.users'),
-    path('change_password/<int:id>/<str:token>/', change_password, name='change_password.users'),
-    path('<int:id>/<str:token>/', update, name='update.users'),
-    path('deactivate/<int:id>/<str:token>/', deactivate, name='deactivate.users'),
-    path('delete/<int:id>/<str:token>/', delete_user, name='delete.users'),
-    path('logout/<int:id>/<str:token>/', logout_user, name='logout.users'),
+    path('', include(router.urls)),
+    path('users/<str:token>/', UserViewSet.as_view({'get': 'retrieve', 'put': 'update', 'delete': 'destroy'}), name='user.detail'),
+    path('register/', UserViewSet.as_view({'post': 'register'}), name='user.register'),
+    path('login/', LoginView.as_view(), name='user.login'),
+    path('logout/', LogoutView.as_view(), name='user.logout'),
+    path('change-password/', ChangePasswordView.as_view(), name='user.change_password'),
 ]
