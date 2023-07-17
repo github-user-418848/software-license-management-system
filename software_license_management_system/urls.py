@@ -3,8 +3,8 @@ from django.conf import settings
 from django.conf.urls.static import static
 
 urlpatterns = [
-    path('users/', include('users.urls')),
-    path('dashboard/', include('dashboard.urls')),
+    path('', include('users.urls')),
+    path('', include('dashboard.urls')),
 ]
 
 if settings.DEBUG:
