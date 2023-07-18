@@ -2,40 +2,66 @@ from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, IsAdminUser
+from rest_framework.authentication import SessionAuthentication, TokenAuthentication
+from rest_framework.authtoken.models import Token
 from django.shortcuts import get_object_or_404
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
+
 from .serializers import UserSerializer, SuperUserAdminSerializer, UserRegistrationSerializer
 from .models import CustomUser
+from .permissions import UserRoleRequiredPermission, CheckOwnerPermission
 
-class UserViewSet(ModelViewSet):
+class PrivilegedUserViewSet(ModelViewSet):
     queryset = CustomUser.objects.all()
     serializer_class = UserSerializer
-    permission_classes = [IsAuthenticated]  # Add appropriate permissions as needed
-
-    def get_object(self):
-        queryset = self.filter_queryset(self.get_queryset())
-        token = self.kwargs.get('token')  # Get the token from the URL parameter
-        user = get_object_or_404(queryset, token=token)  # Retrieve the user by token
-        
-        if self.request.user.token != user.token:
-            return Response({'error': 'Access denied'}, status=status.HTTP_403_FORBIDDEN)
-        
-        if self.request.user.roletype not in ['superadmin', 'admin']:
-            self.check_object_permissions(self.request, user)  # Check object-level permissions for non-admin users
-        return user
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated, UserRoleRequiredPermission]
 
     def get_serializer_class(self):
         if self.request.user.roletype == 'superadmin':
             return SuperUserAdminSerializer  # Serializer for admin users
         return UserSerializer  # Default serializer for other users
+    
+    def create(self, request, *args, **kwargs):
+        serializer = UserRegistrationSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        user.set_password(request.data['password'])
+        user.save()
+        token = Token.objects.create(user=user)
+
+        response_data = {
+            'user': serializer.data,
+            'token': token.key
+        }
+        
+        return Response(response_data, status=status.HTTP_201_CREATED)
+    
+    def get(self, request, *args, **kwargs):
+        instance = self.get_object()
+
+        if request.user != instance:
+            serializer = self.get_serializer(instance)
+            return Response(serializer.data)
+        else:
+            return Response({'error: Access Denied'}, status=status.HTTP_403_FORBIDDEN)
+
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+
+        if request.user == instance:
+            serializer = self.get_serializer(instance)
+            return Response(serializer.data)
+        else:
+            return Response({'error: Access Denied'}, status=status.HTTP_403_FORBIDDEN)
 
     def update(self, request, *args, **kwargs):
         if self.request.user.roletype not in ['superadmin', 'admin']:
             request.data.pop('password', None)
         
         return super().update(request, *args, **kwargs)
-
+    
     def destroy(self, request, *args, **kwargs):
         if self.request.user.roletype != 'superadmin':
             return Response(status=status.HTTP_403_FORBIDDEN)
@@ -56,42 +82,24 @@ class UserViewSet(ModelViewSet):
         user.save()
         return Response({'message': 'User deactivated successfully'}, status=status.HTTP_200_OK)
     
-    def register(self, request, *args, **kwargs):
-        if self.request.user.roletype not in ['superadmin', 'admin']:
-            return Response(status=status.HTTP_403_FORBIDDEN)
-            
-        serializer = UserRegistrationSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
-
 class LoginView(APIView):
     def post(self, request):
-        username = request.data.get('username')  # Get the username from the request data
-        password = request.data.get('password')  # Get the password from the request data
-        content = request.data.get('content')  # Get the content field from the request data
-        
-        # Validate the username, password, and content fields
-        if not username or not password or not content:
-            return Response({'error': 'Invalid credentials'}, status=status.HTTP_400_BAD_REQUEST)
-        
-        # Authenticate the user
-        user = authenticate(request, username=username, password=password)
-
-        if user is not None:
-            login(request, user)
-            serializer = UserSerializer(user)  # Serialize the user object
-            if user.id != request.user.id and user.token != request.user.token:
-                return Response({'error': 'Access denied'}, status=status.HTTP_403_FORBIDDEN)
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        else:
-            return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
-
+        user = get_object_or_404(CustomUser, username=request.data['username'])
+        if not user.check_password(request.data['password']):
+            return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
+        token, created = Token.objects.get_or_create(user=user)
+        serializer = UserSerializer(instance=user)
+        return Response({'token': token.key, 'user': serializer.data})
+    
 class LogoutView(APIView):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+    
     def post(self, request):
-        logout(request)
+        user_token = Token.objects.get(user=request.user)
+        user_token.delete()
         return Response(status=status.HTTP_200_OK)
-
+    
 class ChangePasswordView(APIView):
     permission_classes = [IsAuthenticated]  # Add appropriate permissions as needed
 
