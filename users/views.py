@@ -7,6 +7,8 @@ from rest_framework.authentication import SessionAuthentication, TokenAuthentica
 from rest_framework.authtoken.models import Token
 from django.shortcuts import get_object_or_404
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
+from captcha.fields import ReCaptchaField
+from captcha.widgets import ReCaptchaV3
 
 from .serializers import UserSerializer, SuperUserAdminSerializer, UserRegistrationSerializer
 from .models import CustomUser
@@ -84,6 +86,13 @@ class PrivilegedUserViewSet(ModelViewSet):
     
 class LoginView(APIView):
     def post(self, request):
+        captcha_response = request.data.get('g-recaptcha-response')
+        recaptcha_field = ReCaptchaField(widget=ReCaptchaV3)
+        is_valid_captcha = recaptcha_field.clean(captcha_response)
+
+        if not is_valid_captcha:
+            return Response({'detail': 'Invalid reCAPTCHA'}, status=status.HTTP_400_BAD_REQUEST)
+        
         user = get_object_or_404(CustomUser, username=request.data['username'])
         if not user.check_password(request.data['password']):
             return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
