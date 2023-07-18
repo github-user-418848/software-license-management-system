@@ -86,7 +86,7 @@ class PrivilegedUserViewSet(ModelViewSet):
 class LoginView(APIView):
     
     def post(self, request):
-        captcha_response = request.data.get('g-recaptcha-response')
+        captcha_response = request.data['g-recaptcha-response']
         is_valid_captcha = self.verify_recaptcha(captcha_response)
 
         if not is_valid_captcha:
