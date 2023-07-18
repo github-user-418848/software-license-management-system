@@ -1,6 +1,5 @@
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from django.db import models
-import secrets
 
 ROLETYPES = (
     ('superadmin', 'Super Admin'),
@@ -42,7 +41,6 @@ class CustomUserManager(BaseUserManager):
         return user
 
 class CustomUser(AbstractBaseUser, PermissionsMixin):
-    token = models.CharField(max_length=32, blank=True, null=True)
     image = models.ImageField(upload_to='user_images/', blank=True, null=True, default='default.jpg')
     email = models.EmailField(unique=True)
     username = models.CharField(max_length=30, unique=True)
@@ -66,8 +64,3 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
 
     def get_short_name(self):
         return self.username
-    
-    def save(self, *args, **kwargs):
-        if not self.token:
-            self.token = secrets.token_hex(16)
-        super().save(*args, **kwargs)
