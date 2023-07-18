@@ -6,9 +6,8 @@ from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.authentication import SessionAuthentication, TokenAuthentication
 from rest_framework.authtoken.models import Token
 from django.shortcuts import get_object_or_404
-from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
-from captcha.fields import ReCaptchaField
-from captcha.widgets import ReCaptchaV3
+from django.conf import settings
+import requests
 
 from .serializers import UserSerializer, SuperUserAdminSerializer, UserRegistrationSerializer
 from .models import CustomUser
@@ -85,10 +84,10 @@ class PrivilegedUserViewSet(ModelViewSet):
         return Response({'message': 'User deactivated successfully'}, status=status.HTTP_200_OK)
     
 class LoginView(APIView):
+    
     def post(self, request):
         captcha_response = request.data.get('g-recaptcha-response')
-        recaptcha_field = ReCaptchaField(widget=ReCaptchaV3)
-        is_valid_captcha = recaptcha_field.clean(captcha_response)
+        is_valid_captcha = self.verify_recaptcha(captcha_response)
 
         if not is_valid_captcha:
             return Response({'detail': 'Invalid reCAPTCHA'}, status=status.HTTP_400_BAD_REQUEST)
@@ -96,9 +95,25 @@ class LoginView(APIView):
         user = get_object_or_404(CustomUser, username=request.data['username'])
         if not user.check_password(request.data['password']):
             return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
+        
         token, created = Token.objects.get_or_create(user=user)
         serializer = UserSerializer(instance=user)
         return Response({'token': token.key, 'user': serializer.data})
+    
+    @staticmethod
+    def verify_recaptcha(response):
+        url = 'https://www.google.com/recaptcha/api/siteverify'
+        data = {
+            'secret': settings.RECAPTCHA_PRIVATE_KEY,
+            'response': response,
+        }
+        response = requests.post(url, data=data)
+        result = response.json()
+
+        if 'success' in result and result['success']:
+            return True
+
+        return False
     
 class LogoutView(APIView):
     authentication_classes = [TokenAuthentication]
@@ -125,6 +140,5 @@ class ChangePasswordView(APIView):
         
         user.set_password(new_password)
         user.save()
-        update_session_auth_hash(request, user)
 
         return Response({'message': 'Password changed successfully'}, status=status.HTTP_200_OK)
